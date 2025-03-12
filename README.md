@@ -1,4 +1,4 @@
-# 👋 Hi, I'm Kit Jones  
+# 👋 Hi, I'm Kit
 
 ### 💻 Junior Developer | 🎧 Drum and Bass Producer  
 

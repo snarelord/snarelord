@@ -17,7 +17,7 @@
 ---
 
 ### ⚡ GitHub Stats:
-![Kit's GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=radical)
+![My GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=radical)
 
 ---
 

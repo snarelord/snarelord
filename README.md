@@ -26,5 +26,3 @@
 
 ---
 
-### 🐍 Contribution Snake:
-![snake gif](https://github.com/snarelord/snarelord/blob/output/github-contribution-grid-snake.svg)

@@ -16,13 +16,10 @@
 
 ---
 
-### ⚡ GitHub Stats:
-![My GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=radical)
+### 📊 GitHub Stats
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=radical&hide=stars,prs&rank_icon=github)
 
----
+### 📈 Top Languages
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=compact&theme=radical)
 
-### 🚀 Top Languages:
-![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=compact&theme=radical)
-
----
 

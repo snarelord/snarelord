@@ -17,7 +17,7 @@
 ---
 
 ### 📊 GitHub Stats
-[![GitHub stats](https://github-readme-stats.vercel.app/api?username=anuraghazra)](https://github.com/snarelord/github-readme-stats)
+[![GitHub stats](https://github-readme-stats.vercel.app/api?username=snarelord)](https://github.com/snarelord/github-readme-stats)
 
 ### 📈 Top Languages
 ![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=compact&theme=radical)

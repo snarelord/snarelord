@@ -21,7 +21,11 @@
 ![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=percentile)  
 
 
-### 📈 Top Languages
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=compact&theme=radical)
+## 🎨 Languages
 
+<div align="center">
+
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=donut&theme=tokyonight&hide_border=true)
+
+</div>
 

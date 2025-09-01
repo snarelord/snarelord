@@ -17,7 +17,8 @@
 ---
 
 ### 📊 GitHub Stats
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=radical&include_all_commits=true&count_private=true&rank_icon=percentile)
+![GitHub Streak](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8)  
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=percentile)  
 
 
 ### 📈 Top Languages

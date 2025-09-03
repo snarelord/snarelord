@@ -17,7 +17,7 @@
 ---
 
 ### 📊 GitHub Stats
-![GitHub Streak](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8)  
+![GitHub Streak](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8&v=1)
 ![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=percentile)  
 
 

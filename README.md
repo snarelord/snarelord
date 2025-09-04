@@ -21,10 +21,7 @@
 
 
 ## 🎨 Languages
-
-<div align="center">
-
 ![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=donut&theme=tokyonight&hide_border=true)
 
-</div>
+
 

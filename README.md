@@ -23,7 +23,7 @@
 
 
 ## 🎨 Languages
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=donut&theme=tokyonight&hide_border=true&t=3)
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=donut&theme=tokyonight&hide_border=true&langs_count=6&t=3)
 
 
 

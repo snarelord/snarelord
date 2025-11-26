@@ -17,13 +17,13 @@
 ---
 
 ### 📊 GitHub Stats
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=percentile&t=2) 
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=snarelord&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=percentile) 
 
-![GitHub Streak](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8&t=2)
+![GitHub Streak](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8)
 
 
 ## 🎨 Languages
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=donut&theme=tokyonight&hide_border=true&langs_count=6&t=4)
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=snarelord&layout=donut&theme=tokyonight&hide_border=true&langs_count=6)
 
 
 

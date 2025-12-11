@@ -1,4 +1,4 @@
-name: Generate GitHub Stats + Languages Graph
+name: Generate GitHub Stats
 
 on:
   schedule:

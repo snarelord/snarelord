@@ -27,6 +27,7 @@ jobs:
 
       - name: Move and commit the generated snake
         run: |
+         sudo chown -R $USER:$USER dist
           mkdir -p assets
           mv dist/github-contribution-grid-snake.svg assets/
           git config --global user.name "GitHub Actions Bot"

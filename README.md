@@ -1,6 +1,6 @@
-# 👋 Hi, I'm Kit
+# Hi, I'm Kit
 
-### 💻 Junior Developer | 🎧 Drum and Bass Producer  
+### Junior Developer | Drum and Bass Producer  
 
 ---
 
@@ -17,14 +17,9 @@
 ---
 
 ### 📊 GitHub Stats
-![GitHub Stats](https://stats.dooboo.io/api/github-stats?username=snarelord&theme=tokyonight)
+![GitHub Stats](./github-stats.svg)
 
-![GitHub Streak](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8)
-
+![GitHub Streak](./github-streak.svg)
 
 ## 🎨 Languages
-![Top Languages](https://stats.dooboo.io/api/top-langs?username=snarelord&layout=donut&theme=tokyonight)
-
-
-
-
+![Top Languages](./top-langs.svg)

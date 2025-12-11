@@ -1,0 +1,109 @@
+name: Generate GitHub Stats + Animated Donut
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"  # every 2 hours
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- fetch GitHub stats cards ---
+
+      - name: Download GitHub Stats
+        run: |
+          curl -L \
+          "https://github-readme-stats.vercel.app/api?username=snarelord&theme=tokyonight&show_icons=true&count_private=true&hide_border=true&include_all_commits=true" \
+          -o github-stats.svg
+
+      - name: Download GitHub Streak
+        run: |
+          curl -L \
+          "https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8" \
+          -o github-streak.svg
+
+      # --- Fetch language breakdown from GitHub API ---
+      # Creates languages.json with: { lang: bytes_of_code }
+      - name: Fetch languages JSON
+        run: |
+          curl -H "Accept: application/vnd.github+json" \
+          "https://api.github.com/users/snarelord/repos?per_page=100" > repos.json
+
+          # Extract language URLs
+          cat repos.json | jq -r '.[].languages_url' > language_urls.txt
+
+          # Fetch all language usage
+          echo "{}" > languages.json
+          while IFS= read -r url; do
+            curl -s $url | jq -s 'add' >> languages.json.tmp
+          done < language_urls.txt
+
+          # Combine
+          jq -s 'add' languages.json.tmp > languages.json
+
+      # --- Generate Animated Donut SVG ---
+      - name: Build animated donut SVG
+        run: |
+          TOTAL=$(jq 'to_entries | map(.value) | add' languages.json)
+          COLORS=( "#7aa2f7" "#bb9af7" "#c0caf5" "#9ece6a" "#f7768e" "#e0af68" "#7dcfff" )
+
+          cat > top-langs.svg <<EOF
+          <svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+            <style>
+              text { fill: #c0caf5; font-family: Arial, sans-serif; font-size: 14px; }
+            </style>
+            <circle cx="160" cy="160" r="100" stroke="#1a1b26" stroke-width="40" fill="none"/>
+EOF
+
+          START=0
+          IDX=0
+
+          jq -c 'to_entries | sort_by(-.value)' languages.json | while read -r item; do
+            LANG=$(echo "$item" | jq -r .[].key)
+            VALUE=$(echo "$item" | jq -r .[].value)
+
+            [ "$VALUE" -eq 0 ] && continue
+
+            PERCENT=$(echo "$VALUE / $TOTAL * 100" | bc -l)
+            SWEEP=$(echo "3.6 * $PERCENT" | bc -l)
+            END=$(echo "$START + $SWEEP" | bc -l)
+
+            COLOR=${COLORS[$IDX % ${#COLORS[@]}]}
+            IDX=$((IDX+1))
+
+            cat >> top-langs.svg <<EOF
+            <path
+              d="M160 160 L160 60 A100 100 0 ${PERCENT>50?1:0} 1
+                $(echo "160 + 100 * s($END * 3.14159/180)" | bc -l)
+                $(echo "160 - 100 * c($END * 3.14159/180)" | bc -l)
+                Z"
+              fill="${COLOR}">
+              <animate attributeName="d" dur="1s" fill="freeze"
+                from="M160 160 L160 60 A100 100 0 0 1 160 60 Z"
+                to="M160 160 L160 60 A100 100 0 ${PERCENT>50?1:0} 1
+                  $(echo "160 + 100 * s($END * 3.14159/180)" | bc -l)
+                  $(echo "160 - 100 * c($END * 3.14159/180)" | bc -l)
+                  Z" />
+            </path>
+EOF
+
+            START=$END
+          done
+
+          cat >> top-langs.svg <<EOF
+            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Languages</text>
+          </svg>
+EOF
+
+      # --- Commit results ---
+      - name: Commit generated images
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "actions@github.com"
+          git add github-stats.svg github-streak.svg top-langs.svg
+          git commit -m "Update GitHub stats + donut" || echo "No changes"
+          git push

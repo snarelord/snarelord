@@ -2,108 +2,167 @@ name: Generate GitHub Stats + Animated Donut
 
 on:
   schedule:
-    - cron: "0 */2 * * *"  # every 2 hours
+    - cron: "0 */6 * * *"  # every 6 hours
   workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # --- fetch GitHub stats cards ---
-
-      - name: Download GitHub Stats
+      - name: Download GitHub Stats card
         run: |
-          curl -L \
-          "https://github-readme-stats.vercel.app/api?username=snarelord&theme=tokyonight&show_icons=true&count_private=true&hide_border=true&include_all_commits=true" \
-          -o github-stats.svg
+          curl -L "https://github-readme-stats.vercel.app/api?username=snarelord&theme=tokyonight&show_icons=true&count_private=true&hide_border=true&include_all_commits=true" -o github-stats.svg
 
-      - name: Download GitHub Streak
+      - name: Download GitHub Streak card
         run: |
-          curl -L \
-          "https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8" \
-          -o github-streak.svg
+          curl -L "https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8" -o github-streak.svg
 
-      # --- Fetch language breakdown from GitHub API ---
-      # Creates languages.json with: { lang: bytes_of_code }
-      - name: Fetch languages JSON
+      - name: Setup Node (for SVG generator)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Generate animated donut SVG (languages)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: snarelord
         run: |
-          curl -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/users/snarelord/repos?per_page=100" > repos.json
+          cat > generate-donut.mjs <<'NODE'
+          // Node 18+ script: fetch language bytes, compute percentages, emit an animated donut SVG.
+          import fs from 'fs';
 
-          # Extract language URLs
-          cat repos.json | jq -r '.[].languages_url' > language_urls.txt
+          const token = process.env.GITHUB_TOKEN;
+          const user = process.env.GITHUB_USER || 'snarelord';
+          if (!token) {
+            console.error('GITHUB_TOKEN missing — set in repo secrets (Actions already provides one).');
+            process.exit(1);
+          }
 
-          # Fetch all language usage
-          echo "{}" > languages.json
-          while IFS= read -r url; do
-            curl -s $url | jq -s 'add' >> languages.json.tmp
-          done < language_urls.txt
+          const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'github-actions' };
 
-          # Combine
-          jq -s 'add' languages.json.tmp > languages.json
+          async function fetchAllRepos() {
+            const repos = [];
+            let page = 1;
+            while (true) {
+              const res = await fetch(`https://api.github.com/users/${user}/repos?per_page=100&page=${page}`, { headers });
+              if (!res.ok) throw new Error(`Failed to fetch repos: ${res.status}`);
+              const data = await res.json();
+              if (!data.length) break;
+              repos.push(...data);
+              page++;
+            }
+            return repos;
+          }
 
-      # --- Generate Animated Donut SVG ---
-      - name: Build animated donut SVG
-        run: |
-          TOTAL=$(jq 'to_entries | map(.value) | add' languages.json)
-          COLORS=( "#7aa2f7" "#bb9af7" "#c0caf5" "#9ece6a" "#f7768e" "#e0af68" "#7dcfff" )
+          async function gatherLanguages(repos) {
+            const totals = {};
+            await Promise.all(repos.map(async r => {
+              try {
+                const res = await fetch(r.languages_url, { headers });
+                if (!res.ok) return;
+                const langs = await res.json();
+                for (const [k, v] of Object.entries(langs)) totals[k] = (totals[k] || 0) + v;
+              } catch (e) { /* ignore single repo errors */ }
+            }));
+            return totals;
+          }
 
-          cat > top-langs.svg <<EOF
-          <svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
-            <style>
-              text { fill: #c0caf5; font-family: Arial, sans-serif; font-size: 14px; }
-            </style>
-            <circle cx="160" cy="160" r="100" stroke="#1a1b26" stroke-width="40" fill="none"/>
-EOF
+          function topN(obj, n = 6) {
+            return Object.entries(obj)
+              .sort((a,b) => b[1]-a[1])
+              .slice(0, n)
+              .reduce((acc, [k,v]) => (acc[k]=v, acc), {});
+          }
 
-          START=0
-          IDX=0
+          function makeDonutSVG(langMap) {
+            const colours = ['#7aa2f7','#bb9af7','#c0caf5','#9ece6a','#f7768e','#e0af68','#7dcfff','#334155'];
+            const entries = Object.entries(langMap);
+            const total = entries.reduce((s,[,v]) => s+v, 0) || 1;
+            const radius = 100;
+            const cx = 160, cy = 160;
+            const strokeWidth = 40;
+            const circumference = 2 * Math.PI * radius;
+            let cumulative = 0;
 
-          jq -c 'to_entries | sort_by(-.value)' languages.json | while read -r item; do
-            LANG=$(echo "$item" | jq -r .[].key)
-            VALUE=$(echo "$item" | jq -r .[].value)
+            // Build segments: we will create one circle per segment, using stroke-dasharray animation.
+            let segments = '';
+            entries.forEach(([lang, bytes], idx) => {
+              const percent = (bytes / total) * 100;
+              const draw = (percent/100) * circumference;
+              // dasharray : "<draw> <circumference - draw>"
+              const dasharrayTo = `${draw.toFixed(2)} ${circumference.toFixed(2)}`;
+              const dasharrayFrom = `0 ${circumference.toFixed(2)}`;
+              const rotate = (cumulative / total) * 360;
+              const color = colours[idx % colours.length];
+              segments += `
+              <g transform="rotate(${rotate} ${cx} ${cy})">
+                <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${color}"
+                  stroke-width="${strokeWidth}" stroke-linecap="butt"
+                  stroke-dasharray="${dasharrayFrom}" stroke-dashoffset="0">
+                  <animate attributeName="stroke-dasharray" from="${dasharrayFrom}" to="${dasharrayTo}" dur="1s" fill="freeze" />
+                </circle>
+              </g>`;
+              cumulative += bytes;
+            });
 
-            [ "$VALUE" -eq 0 ] && continue
+            // central label: top language + percentage
+            const top = entries[0] ? entries[0][0] : 'Languages';
+            const topPct = entries[0] ? ((entries[0][1]/total)*100).toFixed(1) : '0';
 
-            PERCENT=$(echo "$VALUE / $TOTAL * 100" | bc -l)
-            SWEEP=$(echo "3.6 * $PERCENT" | bc -l)
-            END=$(echo "$START + $SWEEP" | bc -l)
+            const legendItems = entries.map(([l,b],i) => {
+              const pct = ((b/total)*100).toFixed(1);
+              const col = colours[i % colours.length];
+              return `<g transform="translate(20,${20 + i*20})"><rect width="12" height="12" fill="${col}"></rect><text x="18" y="11" font-size="12" fill="#c0caf5">${l} — ${pct}%</text></g>`;
+            }).join('\n');
 
-            COLOR=${COLORS[$IDX % ${#COLORS[@]}]}
-            IDX=$((IDX+1))
+            return `<?xml version="1.0" encoding="UTF-8"?>
+            <svg width="480" height="320" viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top languages donut">
+              <style>
+                text { font-family: Inter, Arial, sans-serif; fill: #c0caf5; }
+                .bg { fill: #0f1724; }
+              </style>
+              <rect class="bg" x="0" y="0" width="100%" height="100%" rx="8" />
+              <g>
+                ${segments}
+                <circle cx="${cx}" cy="${cy}" r="${radius-20}" fill="#0f1724"></circle>
+                <text x="${cx}" y="${cy-6}" font-size="16" text-anchor="middle">${top}</text>
+                <text x="${cx}" y="${cy+14}" font-size="14" text-anchor="middle">${topPct}%</text>
+              </g>
+              <g transform="translate(320,20)">
+                ${legendItems}
+              </g>
+            </svg>`;
+          }
 
-            cat >> top-langs.svg <<EOF
-            <path
-              d="M160 160 L160 60 A100 100 0 ${PERCENT>50?1:0} 1
-                $(echo "160 + 100 * s($END * 3.14159/180)" | bc -l)
-                $(echo "160 - 100 * c($END * 3.14159/180)" | bc -l)
-                Z"
-              fill="${COLOR}">
-              <animate attributeName="d" dur="1s" fill="freeze"
-                from="M160 160 L160 60 A100 100 0 0 1 160 60 Z"
-                to="M160 160 L160 60 A100 100 0 ${PERCENT>50?1:0} 1
-                  $(echo "160 + 100 * s($END * 3.14159/180)" | bc -l)
-                  $(echo "160 - 100 * c($END * 3.14159/180)" | bc -l)
-                  Z" />
-            </path>
-EOF
+          (async () => {
+            try {
+              const repos = await fetchAllRepos();
+              const langs = await gatherLanguages(repos);
+              const top = topN(langs, 6);
+              const svg = makeDonutSVG(top);
+              fs.writeFileSync('top-langs.svg', svg, 'utf8');
+              console.log('Generated top-langs.svg');
+            } catch (err) {
+              console.error(err);
+              process.exit(1);
+            }
+          })();
+          NODE
 
-            START=$END
-          done
+          node --input-type=module generate-donut.mjs
 
-          cat >> top-langs.svg <<EOF
-            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">Languages</text>
-          </svg>
-EOF
-
-      # --- Commit results ---
       - name: Commit generated images
         run: |
           git config user.name "GitHub Action"
           git config user.email "actions@github.com"
-          git add github-stats.svg github-streak.svg top-langs.svg
-          git commit -m "Update GitHub stats + donut" || echo "No changes"
-          git push
+          git add github-stats.svg github-streak.svg top-langs.svg || true
+          git commit -m "chore: update GitHub stats & animated donut" || echo "No changes to commit"
+          git push || echo "Push failed (maybe read-only token)"

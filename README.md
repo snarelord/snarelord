@@ -17,9 +17,13 @@
 ---
 
 ### 📊 GitHub Stats
-![GitHub Stats](./github-stats.svg)
+![](https://github-profile-summary-cards.vercel.app/api/cards/profile-details?username=snarelord&theme=tokyonight)
 
-![GitHub Streak](./github-streak.svg)
+
+![](https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true)
+
+
 
 ## 🎨 Languages
-![Top Languages](./top-langs.svg)
+![Languages](https://github-profile-summary-cards.vercel.app/api/cards/most-commit-language?username=snarelord&theme=tokyonight)
+

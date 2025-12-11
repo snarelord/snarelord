@@ -1,168 +1,151 @@
-name: Generate GitHub Stats + Animated Donut
+name: Generate GitHub Stats + Languages Graph
 
 on:
   schedule:
-    - cron: "0 */6 * * *"  # every 6 hours
+    - cron: "0 */6 * * *"  # every 2 hours
   workflow_dispatch:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
+      # --- GitHub Stats Card ---
       - name: Download GitHub Stats card
         run: |
-          curl -L "https://github-readme-stats.vercel.app/api?username=snarelord&theme=tokyonight&show_icons=true&count_private=true&hide_border=true&include_all_commits=true" -o github-stats.svg
+          curl -L \
+          "https://github-readme-stats.vercel.app/api?username=snarelord&theme=tokyonight&show_icons=true&count_private=true&hide_border=true&include_all_commits=true" \
+          -o github-stats.svg
 
+      # --- GitHub Streak Card ---
       - name: Download GitHub Streak card
         run: |
-          curl -L "https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8" -o github-streak.svg
+          curl -L \
+          "https://streak-stats.demolab.com?user=snarelord&theme=tokyonight&hide_border=true&border_radius=8" \
+          -o github-streak.svg
 
-      - name: Setup Node (for SVG generator)
+      # --- Setup Node for language graph ---
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: Generate animated donut SVG (languages)
+      # --- Generate Languages Bar Chart ---
+      - name: Generate languages bar graph (TokyoNight style)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: snarelord
+          USERNAME: snarelord
         run: |
-          cat > generate-donut.mjs <<'NODE'
-          // Node 18+ script: fetch language bytes, compute percentages, emit an animated donut SVG.
+          cat > generate-langs.mjs <<'NODE'
           import fs from 'fs';
 
           const token = process.env.GITHUB_TOKEN;
-          const user = process.env.GITHUB_USER || 'snarelord';
-          if (!token) {
-            console.error('GITHUB_TOKEN missing — set in repo secrets (Actions already provides one).');
-            process.exit(1);
-          }
+          const user = process.env.USERNAME || "snarelord";
 
-          const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'github-actions' };
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "github-stats-action"
+          };
 
-          async function fetchAllRepos() {
-            const repos = [];
+          async function fetchRepos() {
             let page = 1;
+            let all = [];
             while (true) {
               const res = await fetch(`https://api.github.com/users/${user}/repos?per_page=100&page=${page}`, { headers });
-              if (!res.ok) throw new Error(`Failed to fetch repos: ${res.status}`);
               const data = await res.json();
-              if (!data.length) break;
-              repos.push(...data);
+              if (!data || data.length === 0) break;
+              all = all.concat(data);
               page++;
             }
-            return repos;
+            return all;
           }
 
-          async function gatherLanguages(repos) {
+          async function fetchLanguages(repos) {
             const totals = {};
-            await Promise.all(repos.map(async r => {
+            for (const repo of repos) {
               try {
-                const res = await fetch(r.languages_url, { headers });
-                if (!res.ok) return;
+                const res = await fetch(repo.languages_url, { headers });
                 const langs = await res.json();
-                for (const [k, v] of Object.entries(langs)) totals[k] = (totals[k] || 0) + v;
-              } catch (e) { /* ignore single repo errors */ }
-            }));
+                for (const [k, v] of Object.entries(langs)) {
+                  totals[k] = (totals[k] || 0) + v;
+                }
+              } catch {}
+            }
             return totals;
           }
 
-          function topN(obj, n = 6) {
-            return Object.entries(obj)
-              .sort((a,b) => b[1]-a[1])
-              .slice(0, n)
-              .reduce((acc, [k,v]) => (acc[k]=v, acc), {});
+          function tokyoColors(i) {
+            const palette = [
+              "#7aa2f7", "#bb9af7", "#9ece6a",
+              "#e0af68", "#f7768e", "#7dcfff",
+              "#c0caf5"
+            ];
+            return palette[i % palette.length];
           }
 
-          function makeDonutSVG(langMap) {
-            const colours = ['#7aa2f7','#bb9af7','#c0caf5','#9ece6a','#f7768e','#e0af68','#7dcfff','#334155'];
-            const entries = Object.entries(langMap);
-            const total = entries.reduce((s,[,v]) => s+v, 0) || 1;
-            const radius = 100;
-            const cx = 160, cy = 160;
-            const strokeWidth = 40;
-            const circumference = 2 * Math.PI * radius;
-            let cumulative = 0;
+          function generateBarGraph(langMap) {
+            const entries = Object.entries(langMap)
+              .sort((a,b) => b[1]-a[1])
+              .slice(0, 6);
 
-            // Build segments: we will create one circle per segment, using stroke-dasharray animation.
-            let segments = '';
-            entries.forEach(([lang, bytes], idx) => {
-              const percent = (bytes / total) * 100;
-              const draw = (percent/100) * circumference;
-              // dasharray : "<draw> <circumference - draw>"
-              const dasharrayTo = `${draw.toFixed(2)} ${circumference.toFixed(2)}`;
-              const dasharrayFrom = `0 ${circumference.toFixed(2)}`;
-              const rotate = (cumulative / total) * 360;
-              const color = colours[idx % colours.length];
-              segments += `
-              <g transform="rotate(${rotate} ${cx} ${cy})">
-                <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${color}"
-                  stroke-width="${strokeWidth}" stroke-linecap="butt"
-                  stroke-dasharray="${dasharrayFrom}" stroke-dashoffset="0">
-                  <animate attributeName="stroke-dasharray" from="${dasharrayFrom}" to="${dasharrayTo}" dur="1s" fill="freeze" />
-                </circle>
-              </g>`;
-              cumulative += bytes;
+            const total = entries.reduce((sum, [,v]) => sum+v, 0);
+            const width = 480;
+            const barW = 300;
+            const barH = 18;
+
+            let y = 50;
+            let bars = "";
+            let labels = "";
+
+            entries.forEach(([lang, bytes], i) => {
+              const pct = total === 0 ? 0 : (bytes / total) * 100;
+              const w = (pct / 100) * barW;
+              const color = tokyoColors(i);
+
+              bars += `
+                <rect x="150" y="${y}" width="${w}" height="${barH}" fill="${color}" rx="4" />
+              `;
+              labels += `
+                <text x="150" y="${y - 4}" fill="#c0caf5" font-size="13">${lang} — ${pct.toFixed(1)}%</text>
+              `;
+              y += 40;
             });
 
-            // central label: top language + percentage
-            const top = entries[0] ? entries[0][0] : 'Languages';
-            const topPct = entries[0] ? ((entries[0][1]/total)*100).toFixed(1) : '0';
-
-            const legendItems = entries.map(([l,b],i) => {
-              const pct = ((b/total)*100).toFixed(1);
-              const col = colours[i % colours.length];
-              return `<g transform="translate(20,${20 + i*20})"><rect width="12" height="12" fill="${col}"></rect><text x="18" y="11" font-size="12" fill="#c0caf5">${l} — ${pct}%</text></g>`;
-            }).join('\n');
-
-            return `<?xml version="1.0" encoding="UTF-8"?>
-            <svg width="480" height="320" viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top languages donut">
+            return `
+            <svg width="${width}" height="${y+20}" viewBox="0 0 ${width} ${y+20}" xmlns="http://www.w3.org/2000/svg">
               <style>
-                text { font-family: Inter, Arial, sans-serif; fill: #c0caf5; }
-                .bg { fill: #0f1724; }
+                text { font-family: Inter, Arial, sans-serif; }
               </style>
-              <rect class="bg" x="0" y="0" width="100%" height="100%" rx="8" />
-              <g>
-                ${segments}
-                <circle cx="${cx}" cy="${cy}" r="${radius-20}" fill="#0f1724"></circle>
-                <text x="${cx}" y="${cy-6}" font-size="16" text-anchor="middle">${top}</text>
-                <text x="${cx}" y="${cy+14}" font-size="14" text-anchor="middle">${topPct}%</text>
-              </g>
-              <g transform="translate(320,20)">
-                ${legendItems}
-              </g>
-            </svg>`;
+              
+              <rect width="100%" height="100%" fill="#1a1b26" rx="8"/>
+              <text x="20" y="30" font-size="18" fill="#c0caf5">Top Languages</text>
+              ${labels}
+              ${bars}
+            </svg>
+            `;
           }
 
           (async () => {
-            try {
-              const repos = await fetchAllRepos();
-              const langs = await gatherLanguages(repos);
-              const top = topN(langs, 6);
-              const svg = makeDonutSVG(top);
-              fs.writeFileSync('top-langs.svg', svg, 'utf8');
-              console.log('Generated top-langs.svg');
-            } catch (err) {
-              console.error(err);
-              process.exit(1);
-            }
+            const repos = await fetchRepos();
+            const languages = await fetchLanguages(repos);
+            const svg = generateBarGraph(languages);
+            fs.writeFileSync("top-langs.svg", svg, "utf8");
           })();
           NODE
 
-          node --input-type=module generate-donut.mjs
+          node generate-langs.mjs
 
-      - name: Commit generated images
+      # --- Commit results ---
+      - name: Commit changes
         run: |
-          git config user.name "GitHub Action"
           git config user.email "actions@github.com"
+          git config user.name "GitHub Action"
           git add github-stats.svg github-streak.svg top-langs.svg || true
-          git commit -m "chore: update GitHub stats & animated donut" || echo "No changes to commit"
-          git push || echo "Push failed (maybe read-only token)"
+          git commit -m "Update GitHub stats & language graph" || true
+          git push || true

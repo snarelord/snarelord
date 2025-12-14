@@ -11,7 +11,7 @@
 
 ---
 
-### 💼 Connect with me:
+### Connect with me:
 - **[LinkedIn](https://www.linkedin.com/in/kit-jones-64926a2aa/)**  
 
 ---

@@ -16,7 +16,7 @@
 
 ---
 
-### 📊 GitHub Stats
+### GitHub Stats
 ![](https://github-profile-summary-cards.vercel.app/api/cards/profile-details?username=snarelord&theme=tokyonight)
 
 
@@ -24,6 +24,6 @@
 
 
 
-## 🎨 Languages
+## Languages
 ![Languages](https://github-profile-summary-cards.vercel.app/api/cards/most-commit-language?username=snarelord&theme=tokyonight)
 
